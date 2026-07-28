@@ -380,7 +380,7 @@ namespace Kirurobo
         /// </summary>
         public event OnMonitorChangedDelegate OnMonitorChanged;
         public delegate void OnMonitorChangedDelegate();
-
+        private int currentMonitor = 0;
 
         // Use this for initialization
         void Awake()
@@ -1165,6 +1165,36 @@ namespace Kirurobo
         {
             int buttons = UniWinCore.GetMouseButtons();
             return (MouseButton)buttons;
+        }
+
+         /// <summary>
+        /// Switch Monitor
+        /// </summary>
+        /// <returns></returns>
+
+        public void SwitchMonitor()
+        {
+            int monitorCount = UniWinCore.GetMonitorCount();
+
+            if (monitorCount <= 1)
+            {
+                Debug.Log("Only detect 1 monitor");
+                return;
+            }
+
+            currentMonitor++;
+
+            if (currentMonitor >= monitorCount)
+            {
+                currentMonitor = 0;
+            }
+
+            bool result = UniWinCore.FitToMonitor(currentMonitor);
+
+            if (result)
+            {
+                Debug.Log("Switched to monitor: " + currentMonitor);
+            }
         }
 
         /// <summary>
