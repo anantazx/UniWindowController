@@ -1189,7 +1189,7 @@ namespace Kirurobo
                 currentMonitor = 0;
             }
 
-            bool result = UniWinCore.FitToMonitor(currentMonitor);
+            bool result = _uniWinCore.FitToMonitor(currentMonitor);
 
             if (result)
             {
