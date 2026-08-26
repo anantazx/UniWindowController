@@ -381,7 +381,7 @@ namespace Kirurobo
         public event OnMonitorChangedDelegate OnMonitorChanged;
         public delegate void OnMonitorChangedDelegate();
         private int currentMonitor = 0;
-
+        private bool isRestoringWindowState = false;
         // Use this for initialization
         void Awake()
         {
@@ -499,12 +499,6 @@ namespace Kirurobo
             StoreOriginalWindowRectangle();
 
             OnMonitorChanged += UpdateMonitorFitting;
-
-            if (WindowStatePersistence.Instance == null ||
-                !WindowStatePersistence.Instance.HasSavedState)
-            {
-                UpdateMonitorFitting();
-            }
         }
 
         void OnDestroy()
@@ -565,7 +559,10 @@ namespace Kirurobo
 
             if (_uniWinCore.ObserveMonitorChanged())
             {
-                OnMonitorChanged?.Invoke();
+                if (!isRestoringWindowState)
+                {
+                    OnMonitorChanged?.Invoke();
+                }
             }
 
             if (_uniWinCore.ObserveWindowStyleChanged(out var type))
@@ -895,18 +892,27 @@ namespace Kirurobo
                     // RESTORE PREVIOUS WINDOW STATE
                     // =========================================
 
-                    bool restored = RestoreWindowState();
+                    bool restored = false;
+
+                    if (WindowStatePersistence.Instance != null &&
+                        WindowStatePersistence.Instance.HasSavedState)
+                    {
+                        isRestoringWindowState = true;
+
+                        restored = RestoreWindowState();
+
+                        isRestoringWindowState = false;
+                    }
 
                     if (!restored)
                     {
                         // First launch
                         SetZoomed(_isZoomed);
 
-                        // Apply initial monitor fitting if enabled
+                        // Initial monitor fitting
                         OnMonitorChanged?.Invoke();
 
-                        // Save the actual initial window state
-                        // after monitor fitting has been applied
+                        // Save the actual initial state
                         if (WindowStatePersistence.Instance != null)
                         {
                             WindowStatePersistence.Instance.SaveState(this);
