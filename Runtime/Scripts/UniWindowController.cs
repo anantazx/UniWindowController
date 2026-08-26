@@ -897,12 +897,22 @@ namespace Kirurobo
 
                     bool restored = RestoreWindowState();
 
+                   bool restored = RestoreWindowState();
+
                     if (!restored)
                     {
                         // First launch
                         SetZoomed(_isZoomed);
 
+                        // Apply initial monitor fitting if enabled
                         OnMonitorChanged?.Invoke();
+
+                        // Save the actual initial window state
+                        // after monitor fitting has been applied
+                        if (WindowStatePersistence.Instance != null)
+                        {
+                            WindowStatePersistence.Instance.SaveState(this);
+                        }
                     }
                 }
             }
