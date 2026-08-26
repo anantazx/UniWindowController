@@ -496,24 +496,28 @@ namespace Kirurobo
             // マウスカーソル直下の色を取得するコルーチンを開始
             StartCoroutine(HitTestCoroutine());
 
-            // Get the initial window size and position
             StoreOriginalWindowRectangle();
 
-            // Fit to the selected monitor
             OnMonitorChanged += UpdateMonitorFitting;
-            UpdateMonitorFitting();
+
+            if (WindowStatePersistence.Instance == null ||
+                !WindowStatePersistence.Instance.HasSavedState)
+            {
+                UpdateMonitorFitting();
+            }
         }
 
         void OnDestroy()
         {
-            if (_uniWinCore != null)
-            {
-                _uniWinCore.Dispose();
-            }
-
             // Instance も破棄
             if (this == current)
             {
+                if (WindowStatePersistence.Instance != null && _uniWinCore != null)
+                {
+                    WindowStatePersistence.Instance.SaveState(this);
+                }
+
+                _uniWinCore?.Dispose();
                 _current = null;
             }
         }
@@ -863,13 +867,17 @@ namespace Kirurobo
             {
                 _uniWinCore.AttachMyWindow();
 
-                // ウィンドウを取得できたら最初の値を設定
                 if (_uniWinCore.IsActive)
                 {
-                    _uniWinCore.SetTransparentType((UniWinCore.TransparentType)transparentType);
+                    _uniWinCore.SetTransparentType(
+                        (UniWinCore.TransparentType)transparentType
+                    );
+
                     _uniWinCore.SetKeyColor(keyColor);
                     _uniWinCore.SetAlphaValue(_alphaValue);
+
                     SetTransparent(_isTransparent);
+
                     if (_isBottommost)
                     {
                         SetBottommost(_isBottommost);
@@ -878,13 +886,24 @@ namespace Kirurobo
                     {
                         SetTopmost(_isTopmost);
                     }
-                    SetZoomed(_isZoomed);
+
                     SetClickThrough(_isClickThrough);
                     SetAllowDrop(_allowDropFiles);
                     SetFreePositioning(_isFreePositioningEnabled);
 
-                    // ウィンドウ取得時にはモニタ変更と同等の処理を行う
-                    OnMonitorChanged?.Invoke();
+                    // =========================================
+                    // RESTORE PREVIOUS WINDOW STATE
+                    // =========================================
+
+                    bool restored = RestoreWindowState();
+
+                    if (!restored)
+                    {
+                        // First launch
+                        SetZoomed(_isZoomed);
+
+                        OnMonitorChanged?.Invoke();
+                    }
                 }
             }
             else
@@ -1195,6 +1214,112 @@ namespace Kirurobo
             {
                 Debug.Log("Switched to monitor: " + currentMonitor);
             }
+        }
+
+        private bool RestoreWindowState()
+        {
+           if (WindowStatePersistence.Instance == null)
+                return false;
+
+            if (!WindowStatePersistence.Instance.TryGetState(
+                out Vector2 position,
+                out Vector2 size,
+                out Rect oldMonitorRect,
+                out Vector2 normalizedPosition,
+                out Vector2 normalizedSize,
+                out bool isZoomed))
+            {
+                return false;
+            }
+
+            int monitorCount = UniWindowController.GetMonitorCount();
+
+            if (monitorCount <= 0)
+                return false;
+
+            Rect targetMonitor = Rect.zero;
+
+            bool oldMonitorStillExists = false;
+
+            for (int i = 0; i < monitorCount; i++)
+            {
+                Rect monitor = UniWindowController.GetMonitorRect(i);
+
+                if (Mathf.Approximately(monitor.x, oldMonitorRect.x) &&
+                    Mathf.Approximately(monitor.y, oldMonitorRect.y))
+                {
+                    targetMonitor = monitor;
+                    oldMonitorStillExists = true;
+                    break;
+                }
+            }
+
+            // Monitor lama sudah tidak tersedia
+            if (!oldMonitorStillExists)
+            {
+                targetMonitor = UniWindowController.GetMonitorRect(0);
+            }
+
+            if (targetMonitor.width <= 0 || targetMonitor.height <= 0)
+                return false;
+
+            Vector2 restoredPosition;
+            Vector2 restoredSize;
+
+            if (oldMonitorStillExists)
+            {
+                restoredPosition = new Vector2(
+                    targetMonitor.x +
+                    normalizedPosition.x * targetMonitor.width,
+
+                    targetMonitor.y +
+                    normalizedPosition.y * targetMonitor.height
+                );
+
+                restoredSize = new Vector2(
+                    normalizedSize.x * targetMonitor.width,
+                    normalizedSize.y * targetMonitor.height
+                );
+            }
+            else
+            {
+                // Monitor lama hilang.
+                // Gunakan ukuran window sebelumnya,
+                // tetapi pastikan tidak lebih besar dari monitor baru.
+
+                restoredSize = new Vector2(
+                    Mathf.Min(size.x, targetMonitor.width),
+                    Mathf.Min(size.y, targetMonitor.height)
+                );
+
+                restoredPosition = new Vector2(
+                    targetMonitor.x +
+                    (targetMonitor.width - restoredSize.x) * 0.5f,
+
+                    targetMonitor.y +
+                    (targetMonitor.height - restoredSize.y) * 0.5f
+                );
+            }
+
+            _uniWinCore.SetZoomed(false);
+
+            _uniWinCore.SetWindowSize(restoredSize);
+            _uniWinCore.SetWindowPosition(restoredPosition);
+
+            if (isZoomed)
+            {
+                _uniWinCore.SetZoomed(true);
+            }
+
+            Debug.Log(
+                $"[UniWindow] Restored Window\n" +
+                $"Monitor Exists: {oldMonitorStillExists}\n" +
+                $"Position: {restoredPosition}\n" +
+                $"Size: {restoredSize}\n" +
+                $"Zoomed: {isZoomed}"
+            );
+
+            return true;
         }
 
         /// <summary>
