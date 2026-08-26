@@ -42,15 +42,25 @@ public class WindowStatePersistence : MonoBehaviour
 
         if (MonitorRect.width > 0 && MonitorRect.height > 0)
         {
-            NormalizedPosition = new Vector2(
-                (WindowPosition.x - MonitorRect.x) / MonitorRect.width,
-                (WindowPosition.y - MonitorRect.y) / MonitorRect.height
-            );
+             if (IsZoomed)
+            {
+                // When maximized, don't normalize the window rectangle.
+                // The OS will restore the maximized size based on the target monitor.
+                NormalizedPosition = Vector2.zero;
+                NormalizedSize = Vector2.one;
+            }
+            else
+            {
+                NormalizedPosition = new Vector2(
+                    (WindowPosition.x - MonitorRect.x) / MonitorRect.width,
+                    (WindowPosition.y - MonitorRect.y) / MonitorRect.height
+                );
 
-            NormalizedSize = new Vector2(
-                WindowSize.x / MonitorRect.width,
-                WindowSize.y / MonitorRect.height
-            );
+                NormalizedSize = new Vector2(
+                    WindowSize.x / MonitorRect.width,
+                    WindowSize.y / MonitorRect.height
+                );
+            }
         }
 
         hasSavedState = true;
