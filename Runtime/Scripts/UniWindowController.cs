@@ -506,10 +506,10 @@ namespace Kirurobo
             // Instance も破棄
             if (this == current)
             {
-                if (WindowStatePersistence.Instance != null && _uniWinCore != null)
-                {
-                    WindowStatePersistence.Instance.SaveState(this);
-                }
+                // if (WindowStatePersistence.Instance != null && _uniWinCore != null)
+                // {
+                //     WindowStatePersistence.Instance.SaveState(this);
+                // }
 
                 _uniWinCore?.Dispose();
                 _current = null;
