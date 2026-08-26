@@ -897,8 +897,6 @@ namespace Kirurobo
 
                     bool restored = RestoreWindowState();
 
-                   bool restored = RestoreWindowState();
-
                     if (!restored)
                     {
                         // First launch
