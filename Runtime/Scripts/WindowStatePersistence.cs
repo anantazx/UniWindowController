@@ -4,7 +4,6 @@ using Kirurobo;
 public class WindowStatePersistence : MonoBehaviour
 {
     public static WindowStatePersistence Instance { get; private set; }
-
     public Vector2 WindowPosition { get; private set; }
     public Vector2 WindowSize { get; private set; }
     public bool IsZoomed { get; private set; }
