@@ -14,6 +14,8 @@ public class WindowStatePersistence : MonoBehaviour
     public bool HasSavedState => hasSavedState;
     public Vector2 NormalizedPosition { get; private set; }
     public Vector2 NormalizedSize { get; private set; }
+    private int initialMonitorIndex = 0;
+    public int InitialMonitorIndex => initialMonitorIndex;
 
     private void Awake()
     {
@@ -64,6 +66,56 @@ public class WindowStatePersistence : MonoBehaviour
         }
 
         hasSavedState = true;
+    }
+
+    public void ClearState()
+    {
+        WindowPosition = Vector2.zero;
+        WindowSize = Vector2.zero;
+        IsZoomed = false;
+
+        MonitorRect = Rect.zero;
+
+        NormalizedPosition = Vector2.zero;
+        NormalizedSize = Vector2.zero;
+
+        hasSavedState = false;
+
+        Debug.Log("[WindowStatePersistence] State cleared.");
+    }
+
+    public void SaveInitialMonitor(UniWindowController controller)
+    {
+        if (controller == null)
+            return;
+
+        int monitorCount = UniWindowController.GetMonitorCount();
+
+        if (monitorCount <= 0)
+            return;
+
+        Vector2 position = controller.windowPosition;
+        Vector2 size = controller.windowSize;
+
+        Vector2 center = position + size * 0.5f;
+
+        for (int i = 0; i < monitorCount; i++)
+        {
+            Rect monitor = UniWindowController.GetMonitorRect(i);
+
+            if (monitor.Contains(center))
+            {
+                initialMonitorIndex = i;
+
+                Debug.Log(
+                    $"[WindowStatePersistence] Initial monitor saved: {i}"
+                );
+
+                return;
+            }
+        }
+
+        initialMonitorIndex = 0;
     }
 
     private int FindMonitorForWindow(Vector2 windowPosition, Vector2 windowSize)

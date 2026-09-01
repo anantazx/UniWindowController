@@ -380,6 +380,8 @@ namespace Kirurobo
         /// </summary>
         public event OnMonitorChangedDelegate OnMonitorChanged;
         public delegate void OnMonitorChangedDelegate();
+        public event Action OnMonitorSwitched;
+
         private int currentMonitor = 0;
         private bool isRestoringWindowState = false;
         // Use this for initialization
@@ -1200,10 +1202,39 @@ namespace Kirurobo
             return (MouseButton)buttons;
         }
 
-         /// <summary>
+        /// <summary>
         /// Switch Monitor
         /// </summary>
         /// <returns></returns>
+        private int GetCurrentMonitorIndex()
+        {
+            Vector2 windowPosition = this.windowPosition;
+            Vector2 windowSize = this.windowSize;
+
+            Vector2 windowCenter =
+                windowPosition + windowSize * 0.5f;
+
+            int monitorCount = UniWinCore.GetMonitorCount();
+
+            for (int i = 0; i < monitorCount; i++)
+            {
+                if (UniWinCore.GetMonitorRectangle(
+                    i,
+                    out Vector2 position,
+                    out Vector2 size))
+                {
+                    Rect monitor = new Rect(position, size);
+
+                    if (monitor.Contains(windowCenter))
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return 0;
+        }
+
 
         public void SwitchMonitor()
         {
@@ -1226,8 +1257,25 @@ namespace Kirurobo
 
             if (result)
             {
-                Debug.Log("Switched to monitor: " + currentMonitor);
+                Debug.Log(
+                    $"[UniWindow] Switched to monitor: {currentMonitor}"
+                );
+
+                OnMonitorSwitched?.Invoke();
             }
+
+        }
+
+        public void SetWindowWidth(int width)
+        {
+            if (_uniWinCore == null || !_uniWinCore.IsActive)
+                return;
+
+            Vector2 size = _uniWinCore.GetWindowSize();
+
+            size.x = width;
+
+            _uniWinCore.SetWindowSize(size);
         }
 
         private bool RestoreWindowState()
@@ -1235,112 +1283,112 @@ namespace Kirurobo
           if (WindowStatePersistence.Instance == null)
             return false;
 
-        if (!WindowStatePersistence.Instance.TryGetState(
-            out Vector2 position,
-            out Vector2 size,
-            out Rect oldMonitorRect,
-            out Vector2 normalizedPosition,
-            out Vector2 normalizedSize,
-            out bool isZoomed))
-        {
-            return false;
-        }
-
-        int monitorCount = UniWindowController.GetMonitorCount();
-
-        if (monitorCount <= 0)
-            return false;
-
-        Rect targetMonitor = Rect.zero;
-        bool oldMonitorStillExists = false;
-
-        for (int i = 0; i < monitorCount; i++)
-        {
-            Rect monitor = UniWindowController.GetMonitorRect(i);
-
-            if (Mathf.Approximately(monitor.x, oldMonitorRect.x) &&
-                Mathf.Approximately(monitor.y, oldMonitorRect.y))
+            if (!WindowStatePersistence.Instance.TryGetState(
+                out Vector2 position,
+                out Vector2 size,
+                out Rect oldMonitorRect,
+                out Vector2 normalizedPosition,
+                out Vector2 normalizedSize,
+                out bool isZoomed))
             {
-                targetMonitor = monitor;
-                oldMonitorStillExists = true;
-                break;
+                return false;
             }
-        }
 
-        if (!oldMonitorStillExists)
-        {
-            targetMonitor = UniWindowController.GetMonitorRect(0);
-        }
+            int monitorCount = UniWindowController.GetMonitorCount();
 
-        if (targetMonitor.width <= 0 || targetMonitor.height <= 0)
-            return false;
+            if (monitorCount <= 0)
+                return false;
 
-        // =========================================
-        // RESTORE MAXIMIZED WINDOW
-        // =========================================
+            Rect targetMonitor = Rect.zero;
+            bool oldMonitorStillExists = false;
 
-        if (isZoomed)
-        {
-            // Make sure we're in normal state before changing monitor.
-            _uniWinCore.SetZoomed(false);
+            for (int i = 0; i < monitorCount; i++)
+            {
+                Rect monitor = UniWindowController.GetMonitorRect(i);
 
-            // Put the window onto the target monitor first.
-            Vector2 restoredPosition = new Vector2(
-                targetMonitor.x + 10f,
-                targetMonitor.y + 10f
-            );
+                if (Mathf.Approximately(monitor.x, oldMonitorRect.x) &&
+                    Mathf.Approximately(monitor.y, oldMonitorRect.y))
+                {
+                    targetMonitor = monitor;
+                    oldMonitorStillExists = true;
+                    break;
+                }
+            }
 
-            _uniWinCore.SetWindowPosition(restoredPosition);
+            if (!oldMonitorStillExists)
+            {
+                targetMonitor = UniWindowController.GetMonitorRect(0);
+            }
 
-            // Let Windows calculate the correct maximized rectangle.
-            _uniWinCore.SetZoomed(true);
+            if (targetMonitor.width <= 0 || targetMonitor.height <= 0)
+                return false;
 
-            Debug.Log(
-                $"[UniWindow] Restored Maximized Window\n" +
-                $"Monitor Exists: {oldMonitorStillExists}\n" +
-                $"Monitor: {targetMonitor}\n" +
-                $"Zoomed: true"
-            );
+            // =========================================
+            // RESTORE MAXIMIZED WINDOW
+            // =========================================
 
-            return true;
-        }
+            if (isZoomed)
+            {
+                // Make sure we're in normal state before changing monitor.
+                _uniWinCore.SetZoomed(false);
 
-        // =========================================
-        // RESTORE NORMAL WINDOW
-        // =========================================
+                // Put the window onto the target monitor first.
+                Vector2 restoredPosition = new Vector2(
+                    targetMonitor.x + 10f,
+                    targetMonitor.y + 10f
+                );
 
-        Vector2 restoredSize;
-        Vector2 restoredPositionNormal;
+                _uniWinCore.SetWindowPosition(restoredPosition);
 
-        if (oldMonitorStillExists)
-        {
-            restoredPositionNormal = new Vector2(
-                targetMonitor.x +
-                normalizedPosition.x * targetMonitor.width,
+                // Let Windows calculate the correct maximized rectangle.
+                _uniWinCore.SetZoomed(true);
 
-                targetMonitor.y +
-                normalizedPosition.y * targetMonitor.height
-            );
+                Debug.Log(
+                    $"[UniWindow] Restored Maximized Window\n" +
+                    $"Monitor Exists: {oldMonitorStillExists}\n" +
+                    $"Monitor: {targetMonitor}\n" +
+                    $"Zoomed: true"
+                );
 
-            restoredSize = new Vector2(
-                normalizedSize.x * targetMonitor.width,
-                normalizedSize.y * targetMonitor.height
-            );
-        }
-        else
-        {
-            restoredSize = new Vector2(
-                Mathf.Min(size.x, targetMonitor.width),
-                Mathf.Min(size.y, targetMonitor.height)
-            );
+                return true;
+            }
 
-            restoredPositionNormal = new Vector2(
-                targetMonitor.x +
-                (targetMonitor.width - restoredSize.x) * 0.5f,
+            // =========================================
+            // RESTORE NORMAL WINDOW
+            // =========================================
 
-                targetMonitor.y +
-                (targetMonitor.height - restoredSize.y) * 0.5f
-            );
+            Vector2 restoredSize;
+            Vector2 restoredPositionNormal;
+
+            if (oldMonitorStillExists)
+            {
+                restoredPositionNormal = new Vector2(
+                    targetMonitor.x +
+                    normalizedPosition.x * targetMonitor.width,
+
+                    targetMonitor.y +
+                    normalizedPosition.y * targetMonitor.height
+                );
+
+                restoredSize = new Vector2(
+                    normalizedSize.x * targetMonitor.width,
+                    normalizedSize.y * targetMonitor.height
+                );
+            }
+            else
+            {
+                restoredSize = new Vector2(
+                    Mathf.Min(size.x, targetMonitor.width),
+                    Mathf.Min(size.y, targetMonitor.height)
+                );
+
+                restoredPositionNormal = new Vector2(
+                    targetMonitor.x +
+                    (targetMonitor.width - restoredSize.x) * 0.5f,
+
+                    targetMonitor.y +
+                    (targetMonitor.height - restoredSize.y) * 0.5f
+                );
         }
 
         _uniWinCore.SetZoomed(false);
