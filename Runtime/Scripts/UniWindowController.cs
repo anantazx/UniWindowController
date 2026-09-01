@@ -911,10 +911,34 @@ namespace Kirurobo
                         // First launch
                         SetZoomed(_isZoomed);
 
-                        // Initial monitor fitting
+                        bool hasPendingNewGameMonitor = false;
+
+                        if (WindowStatePersistence.Instance != null)
+                        {
+                            if (WindowStatePersistence.Instance.TryConsumeNewGameMonitor(
+                                out int monitorIndex))
+                            {
+                                int monitorCount = UniWinCore.GetMonitorCount();
+
+                                if (monitorIndex >= 0 &&
+                                    monitorIndex < monitorCount)
+                                {
+                                    // Use the monitor from before New Game.
+                                    _monitorToFit = monitorIndex;
+
+                                    hasPendingNewGameMonitor = true;
+
+                                    Debug.Log(
+                                        $"[UniWindow] New Game monitor restored: " +
+                                        $"{monitorIndex}"
+                                    );
+                                }
+                            }
+                        }
+
+                        // This will use _monitorToFit.
                         OnMonitorChanged?.Invoke();
 
-                        // Save the actual initial state
                         if (WindowStatePersistence.Instance != null)
                         {
                             WindowStatePersistence.Instance.SaveState(this);
@@ -1206,7 +1230,7 @@ namespace Kirurobo
         /// Switch Monitor
         /// </summary>
         /// <returns></returns>
-        private int GetCurrentMonitorIndex()
+        public int GetCurrentMonitorIndex()
         {
             Vector2 windowPosition = this.windowPosition;
             Vector2 windowSize = this.windowSize;

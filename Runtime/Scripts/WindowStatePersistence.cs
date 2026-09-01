@@ -16,6 +16,9 @@ public class WindowStatePersistence : MonoBehaviour
     public Vector2 NormalizedSize { get; private set; }
     private int initialMonitorIndex = 0;
     public int InitialMonitorIndex => initialMonitorIndex;
+    private int pendingNewGameMonitor = -1;
+    public bool HasPendingNewGameMonitor =>
+        pendingNewGameMonitor >= 0;
 
     private void Awake()
     {
@@ -66,6 +69,30 @@ public class WindowStatePersistence : MonoBehaviour
         }
 
         hasSavedState = true;
+    }
+    public void SaveNewGameMonitor(UniWindowController controller)
+    {
+        if (controller == null)
+            return;
+
+        pendingNewGameMonitor =
+            controller.GetCurrentMonitorIndex();
+
+        Debug.Log(
+            $"[WindowStatePersistence] " +
+            $"New Game monitor saved: {pendingNewGameMonitor}"
+        );
+    }
+    public bool TryConsumeNewGameMonitor(out int monitorIndex)
+    {
+        monitorIndex = pendingNewGameMonitor;
+
+        if (pendingNewGameMonitor < 0)
+            return false;
+
+        pendingNewGameMonitor = -1;
+
+        return true;
     }
 
     public void ClearState()
@@ -119,26 +146,26 @@ public class WindowStatePersistence : MonoBehaviour
     }
 
     private int FindMonitorForWindow(Vector2 windowPosition, Vector2 windowSize)
-{
-    int monitorCount = UniWindowController.GetMonitorCount();
-
-    if (monitorCount <= 0)
-        return 0;
-
-    Vector2 windowCenter = windowPosition + windowSize * 0.5f;
-
-    for (int i = 0; i < monitorCount; i++)
     {
-        Rect monitor = UniWindowController.GetMonitorRect(i);
+        int monitorCount = UniWindowController.GetMonitorCount();
 
-        if (monitor.Contains(windowCenter))
+        if (monitorCount <= 0)
+            return 0;
+
+        Vector2 windowCenter = windowPosition + windowSize * 0.5f;
+
+        for (int i = 0; i < monitorCount; i++)
         {
-            return i;
-        }
-    }
+            Rect monitor = UniWindowController.GetMonitorRect(i);
 
-    return 0;
-}
+            if (monitor.Contains(windowCenter))
+            {
+                return i;
+            }
+        }
+
+        return 0;
+    }
 
    public bool TryGetState(
     out Vector2 position,
