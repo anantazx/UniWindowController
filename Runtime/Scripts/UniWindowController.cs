@@ -911,6 +911,8 @@ namespace Kirurobo
                         // First launch
                         SetZoomed(_isZoomed);
 
+                        SetTopmost(true);
+
                         bool hasPendingNewGameMonitor = false;
 
                         if (WindowStatePersistence.Instance != null)
