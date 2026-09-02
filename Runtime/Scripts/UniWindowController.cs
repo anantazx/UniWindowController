@@ -500,7 +500,7 @@ namespace Kirurobo
 
             StoreOriginalWindowRectangle();
 
-            OnMonitorChanged += UpdateMonitorFitting;
+            //OnMonitorChanged += UpdateMonitorFitting;
         }
 
         void OnDestroy()
@@ -576,7 +576,7 @@ namespace Kirurobo
                 //     //SetZoomed(true);        // 強制的に最大化　←必ずしも働かない
                 //     //shouldFitMonitor = false;    // フィットを無効化
                 // }
-                if (_shouldFitMonitor) StartCoroutine("ForceZoomed"); // 時間差で最大化を強制
+                //if (_shouldFitMonitor) StartCoroutine("ForceZoomed"); // 時間差で最大化を強制
                 
                 OnStateChanged?.Invoke((WindowStateEventType)type);
             }
